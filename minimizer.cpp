@@ -4,10 +4,11 @@
 #include <string>
 #include <unordered_set>
 #include <algorithm>
+#include <cmath>
 
 using namespace std;
 
-// Function to read genomes from a file
+// Lee genomas del archivo
 vector<string> readGenomesFromFile(const string& filename) {
     vector<string> genomes;
     ifstream file(filename);
@@ -35,11 +36,11 @@ vector<string> readGenomesFromFile(const string& filename) {
     return genomes;
 }
 
-// Function to extract minimizers from a genome sequence
+// Funcion para extraer minimizadores de una secuencia de genoma
 unordered_set<string> extractMinimizers(const string& genome, int k, int w) {
     unordered_set<string> minimizers;
     if (genome.size() < k) {
-        return minimizers; // Return empty set if genome is too short
+        return minimizers; // Devuelve set vacio si el genoma es muy corto
     }
     for (size_t i = 0; i <= genome.size() - w; ++i) {
         string window = genome.substr(i, w);
@@ -55,7 +56,7 @@ unordered_set<string> extractMinimizers(const string& genome, int k, int w) {
     return minimizers;
 }
 
-// Function to compute Jaccard similarity between two sets of minimizers
+// Funcion para calcular Jaccard entre dos conjuntos de minimizadores
 double computeJaccardSimilarity(const unordered_set<string>& set1, const unordered_set<string>& set2) {
     unordered_set<string> intersection;
     unordered_set<string> unionSet = set1;
@@ -68,6 +69,45 @@ double computeJaccardSimilarity(const unordered_set<string>& set1, const unorder
     }
 
     return static_cast<double>(intersection.size()) / unionSet.size();
+}
+
+// Funcion para calcular el verdadero Jaccard entre dos conjuntos de k-mers
+double computeTrueJaccardSimilarity(const unordered_set<string>& set1, const unordered_set<string>& set2) {
+    unordered_set<string> intersection;
+    unordered_set<string> unionSet = set1;
+
+    for (const auto& kmer : set2) {
+        if (set1.find(kmer) != set1.end()) {
+            intersection.insert(kmer);
+        }
+        unionSet.insert(kmer);
+    }
+
+    return static_cast<double>(intersection.size()) / unionSet.size();
+}
+
+// Funcion para calcular el error relativo medio
+double computeMeanRelativeError(const vector<double>& trueValues, const vector<double>& estimatedValues) {
+    double totalRelativeError = 0.0;
+    size_t validPairs = 0;
+    for (size_t i = 0; i < trueValues.size(); ++i) {
+        if (trueValues[i] != 0) {
+            double relativeError = fabs(trueValues[i] - estimatedValues[i]) / trueValues[i];
+            totalRelativeError += relativeError;
+            validPairs++;
+        }
+    }
+    return validPairs > 0 ? totalRelativeError / validPairs : 0.0;
+}
+
+// Funcion para computar el error absoluto medio
+double computeMeanAbsoluteError(const vector<double>& trueValues, const vector<double>& estimatedValues) {
+    double totalAbsoluteError = 0.0;
+    for (size_t i = 0; i < trueValues.size(); ++i) {
+        double absoluteError = fabs(trueValues[i] - estimatedValues[i]);
+        totalAbsoluteError += absoluteError;
+    }
+    return totalAbsoluteError / trueValues.size();
 }
 
 int main() {
@@ -89,13 +129,43 @@ int main() {
         minimizersList.push_back(extractMinimizers(genome, k, w));
     }
 
-    // Computar Jaccard entre cada par de genomas
+    // Calcular los k-mers para cada genoma
+    vector<unordered_set<string>> kmersList;
+    for (const auto& genome : genomes) {
+        kmersList.push_back(extractMinimizers(genome, k, k)); // Usar k como ventana para k-mers
+    }
+
+    // Computar Jaccard y errores relativos
+    vector<double> trueJaccardValues;
+    vector<double> estimatedJaccardValues;
+    double totalRelativeError = 0.0;
+    double totalAbsoluteError = 0.0;
+    size_t pairCount = 0;
+
     for (size_t i = 0; i < minimizersList.size(); ++i) {
         for (size_t j = i + 1; j < minimizersList.size(); ++j) {
-            double similarity = computeJaccardSimilarity(minimizersList[i], minimizersList[j]);
-            cout << "Jaccard similarity between genome " << i << " and genome " << j << ": " << similarity << endl;
+            double trueSimilarity = computeTrueJaccardSimilarity(kmersList[i], kmersList[j]);
+            double estimatedSimilarity = computeJaccardSimilarity(minimizersList[i], minimizersList[j]);
+            trueJaccardValues.push_back(trueSimilarity);
+            estimatedJaccardValues.push_back(estimatedSimilarity);
+            if (trueSimilarity != 0) {
+                double relativeError = fabs(trueSimilarity - estimatedSimilarity) / trueSimilarity;
+                totalRelativeError += relativeError;
+                pairCount++;
+            }
+            double absoluteError = fabs(trueSimilarity - estimatedSimilarity);
+            totalAbsoluteError += absoluteError;
+            cout << "Estimacion de similitud de Jaccard entre genoma " << i << " y genoma " << j << ": " << estimatedSimilarity << endl;
         }
     }
+
+    // Calcular el error relativo medio
+    double meanRelativeError = pairCount > 0 ? totalRelativeError / pairCount : 0.0;
+    cout << "Error relativo medio: " << meanRelativeError << endl;
+
+    // Calcular el error absoluto medio
+    double meanAbsoluteError = totalAbsoluteError / trueJaccardValues.size();
+    cout << "Error absoluto medio: " << meanAbsoluteError << endl;
 
     return 0;
 }
