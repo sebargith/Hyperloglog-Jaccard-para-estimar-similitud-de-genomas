@@ -7,7 +7,7 @@
 class HyperLogLog {
 private:
     std::vector<int> registers;
-    static const int p = 14; // 2^14 buckets
+    static const int p = 18; // 2^14 buckets
     static const int m = 1 << p;
 
 public:

@@ -12,7 +12,7 @@ HyperLogLog::HyperLogLog() : registers(m, 0) {}
 
 // Usamos __buildtin_clz__ para contar los ceros a la izquierda
 int HyperLogLog::countLeadingZeros(uint32_t hashValue) {
-    return __builtin_clz(hashValue) + 1; // Sumamos 1 para evitar el caso de un valor 0
+    return __builtin_clz(hashValue);
 }
 
 // Función hash utilizando SpookyHash
@@ -28,13 +28,13 @@ void HyperLogLog::add(const std::string &data) {
     // Extraer el índice del registro (los primeros p bits del hash)
     int registerIndex = hashValue >> (32 - p);
 
-    // Extraer el número de ceros a la izquierda (en los bits restantes)
-    uint32_t w = hashValue << p;
-    int leadingZeros = countLeadingZeros(w);
+    // Contar los ceros en el resto de los bits sin desplazamiento
+    int leadingZeros = countLeadingZeros(hashValue << p);  // Usa los bits restantes sin perder información
 
     // Actualizamos el registro con el máximo número de ceros encontrados
     registers[registerIndex] = std::max(registers[registerIndex], leadingZeros);
 }
+
 
 // Estimar la cardinalidad usando HyperLogLog
 double HyperLogLog::estimate() {
