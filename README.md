@@ -1,7 +1,11 @@
 # Hyperloglog-Jaccard-para-estimar-similitud-de-genomas
 
-Instrucciones de compilación
+Integrantes:
+Javier Leiva Ulloa
+Sebastian Rosas
 
+
+Instrucciones de compilación:
 Descargar los archivos dentro un directorio y a continuación ejecutar:
 
 g++ -std=c++11 -o jaccard_sim jaccard.cpp hyperloglog.cpp Spooky.cpp
